@@ -36,10 +36,12 @@ const MultiplayerGameWrapper = ({
     if (!socket || !roomCode) return
 
     const gameStartedHandler = (data) => {
-      console.log('Jogo iniciado:', data)
+      console.log('Evento game_started recebido no MultiplayerGameWrapper:', data)
+      console.log('Estado atual gameStarted:', gameStarted)
       setGameStarted(true)
       setGameStartTime(Date.now())
       setPlayers(data.players || [])
+      console.log('gameStarted definido como true')
     }
 
     const scoreUpdatedHandler = (data) => {

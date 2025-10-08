@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, RotateCcw, Users, Sparkles, Zap } from 'lucide-react'
 
-const SequenceGame = () => {
+const SequenceGame = ({ 
+  isMultiplayer = false, 
+  onScoreUpdate, 
+  onGameComplete, 
+  onGameAction, 
+  roomCode, 
+  sessionId 
+}) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [sequence, setSequence] = useState([])
   const [playerSequence, setPlayerSequence] = useState([])
@@ -82,6 +89,13 @@ const SequenceGame = () => {
     }, 500)
   }
 
+  // Auto-inicializar o jogo no modo multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer])
+
   const handleColorClick = async (colorId) => {
     if (isPlaying || gameOver) return
     
@@ -97,6 +111,12 @@ const SequenceGame = () => {
       // Errou!
       setGameOver(true)
       setMessage('Ops! Sequência incorreta. Tente novamente!')
+      
+      // Notificar o multiplayer sobre o fim do jogo
+      if (isMultiplayer && onGameComplete) {
+        onGameComplete(score)
+      }
+      
       return
     }
     
@@ -104,9 +124,15 @@ const SequenceGame = () => {
     if (newPlayerSequence.length === sequence.length) {
       // Acertou a sequência completa!
       const points = sequence.length * 100
-      setScore(score + points)
+      const newScore = score + points
+      setScore(newScore)
       setLevel(level + 1)
       setMessage('Parabéns! Próximo nível...')
+      
+      // Notificar o multiplayer sobre a atualização do score
+      if (isMultiplayer && onScoreUpdate) {
+        onScoreUpdate(newScore)
+      }
       
       setTimeout(() => {
         const nextColor = Math.floor(Math.random() * 4)
