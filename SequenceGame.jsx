@@ -73,6 +73,7 @@ const SequenceGame = ({
   }
 
   const initializeGame = () => {
+    console.log('🎯 Inicializando jogo - modo multiplayer:', isMultiplayer)
     const firstColor = Math.floor(Math.random() * 4)
     const newSequence = [firstColor]
     
@@ -84,6 +85,8 @@ const SequenceGame = ({
     setGameOver(false)
     setMessage('')
     
+    console.log('🎯 Jogo inicializado - gameStarted definido como true')
+    
     setTimeout(() => {
       playSequence(newSequence)
     }, 500)
@@ -91,10 +94,14 @@ const SequenceGame = ({
 
   // Auto-inicializar o jogo no modo multiplayer
   useEffect(() => {
+    console.log('🎯 SequenceGame useEffect - isMultiplayer:', isMultiplayer, 'gameStarted:', gameStarted)
+    console.log('🎯 Props recebidas:', { isMultiplayer, roomCode, sessionId, onScoreUpdate: !!onScoreUpdate, onGameComplete: !!onGameComplete })
+    
     if (isMultiplayer && !gameStarted) {
+      console.log('🎯 Inicializando jogo automaticamente no modo multiplayer')
       initializeGame()
     }
-  }, [isMultiplayer])
+  }, [isMultiplayer, gameStarted])
 
   const handleColorClick = async (colorId) => {
     if (isPlaying || gameOver) return

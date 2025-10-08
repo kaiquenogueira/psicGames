@@ -33,15 +33,17 @@ const MultiplayerGameWrapper = ({
 
   // Handlers para eventos do socket
   useEffect(() => {
+    console.log('🔧 MultiplayerGameWrapper useEffect - socket:', !!socket, 'roomCode:', roomCode)
     if (!socket || !roomCode) return
 
     const gameStartedHandler = (data) => {
-      console.log('Evento game_started recebido no MultiplayerGameWrapper:', data)
-      console.log('Estado atual gameStarted:', gameStarted)
+      console.log('🎮 Evento game_started recebido no MultiplayerGameWrapper:', data)
+      console.log('🎮 Estado atual gameStarted:', gameStarted)
+      console.log('🎮 Dados dos jogadores:', data.players)
       setGameStarted(true)
       setGameStartTime(Date.now())
       setPlayers(data.players || [])
-      console.log('gameStarted definido como true')
+      console.log('🎮 gameStarted definido como true - novo estado será aplicado')
     }
 
     const scoreUpdatedHandler = (data) => {
@@ -129,7 +131,10 @@ const MultiplayerGameWrapper = ({
   }, [roomCode, isConnected, resetGame])
 
   // Renderizar tela de espera
+  console.log('🖥️ Renderizando MultiplayerGameWrapper - gameStarted:', gameStarted, 'gameEnded:', gameEnded)
+  
   if (!gameStarted) {
+    console.log('🖥️ Mostrando tela de espera - gameStarted é false')
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
@@ -264,6 +269,7 @@ const MultiplayerGameWrapper = ({
       </Card>
 
       {/* Componente do jogo */}
+      {console.log('🎮 Renderizando GameComponent - props:', { isMultiplayer: true, roomCode, sessionId })}
       <GameComponent
         isMultiplayer={true}
         onScoreUpdate={handleScoreUpdate}
