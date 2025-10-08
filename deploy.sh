@@ -19,13 +19,19 @@ echo "🔨 Fazendo build do frontend..."
 npm install
 npm run build
 
+# Criar ambiente virtual Python se não existir
+if [ ! -d ".venv" ]; then
+    echo "🐍 Criando ambiente virtual Python..."
+    python3 -m venv .venv
+fi
+
 # Ativar ambiente virtual Python
 echo "🐍 Ativando ambiente virtual Python..."
 source .venv/bin/activate
 
 # Instalar dependências Python
 echo "📦 Instalando dependências Python..."
-pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt
 
 # Verificar se o servidor está rodando
 echo "🔍 Verificando servidor..."
@@ -37,7 +43,7 @@ fi
 
 # Iniciar servidor
 echo "🌟 Iniciando servidor..."
-nohup python main.py > server.log 2>&1 &
+nohup .venv/bin/python main.py > server.log 2>&1 &
 
 # Aguardar alguns segundos para o servidor inicializar
 sleep 5
