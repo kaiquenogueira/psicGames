@@ -1,5 +1,6 @@
 import os
 import sys
+import mimetypes
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -9,8 +10,13 @@ from flask_socketio import SocketIO
 # Removido: imports de src.* e banco de dados inexistentes
 from multiplayer import multiplayer_bp, init_socketio
 
-# Servir estáticos a partir da raiz do projeto
-app = Flask(__name__, static_folder=os.path.dirname(__file__))
+# Configurar MIME types corretos
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+
+# Servir estáticos a partir da pasta dist/
+dist_folder = os.path.join(os.path.dirname(__file__), 'dist')
+app = Flask(__name__, static_folder=dist_folder)
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
 # Configurar CORS para permitir requisições do frontend
