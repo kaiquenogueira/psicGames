@@ -75,14 +75,19 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
     }
 
     const gameStartedHandler = (data) => {
-      console.log('Jogo iniciado!', data)
+      console.log('🎮 Jogo iniciado no MultiplayerRoom!', data)
+      console.log('🏠 currentRoom:', currentRoom)
+      console.log('🎯 selectedGameType:', selectedGameType)
+      
       setGameStarted(true)
       if (typeof onStartGame === 'function') {
-        onStartGame({
+        const gameData = {
           ...data,
           roomCode: currentRoom,
           gameType: selectedGameType
-        })
+        }
+        console.log('📤 Enviando dados para App.jsx:', gameData)
+        onStartGame(gameData)
       }
     }
 

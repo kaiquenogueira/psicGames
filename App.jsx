@@ -68,6 +68,8 @@ function App() {
   ]
 
   const handleMultiplayerStart = (data) => {
+    console.log('📥 handleMultiplayerStart recebeu dados:', data)
+    console.log('📥 roomCode recebido:', data?.roomCode)
     setMultiplayerData(data)
     setCurrentView(`multiplayer-${data.gameType}`)
   }
