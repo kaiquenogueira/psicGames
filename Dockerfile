@@ -15,8 +15,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY requirements.txt ./
 
-# Instalar dependências Node.js
-RUN npm ci --only=production
+# Instalar dependências Node.js (incluindo devDependencies para o build)
+RUN npm ci
 
 # Criar ambiente virtual Python e instalar dependências
 RUN python3 -m venv .venv
