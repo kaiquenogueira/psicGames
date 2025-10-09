@@ -172,7 +172,8 @@ def init_socketio(socketio):
         # Notificar todos na sala
         emit('game_started', {
             'game_type': room_data['game_type'],
-            'players': room_data['players']
+            'players': room_data['players'],
+            'room_code': room_code
         }, room=room_code)
         
         print(f'Jogo iniciado na sala {room_code}')

@@ -32,13 +32,15 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
     if (!socket) return
 
     const disconnectHandler = () => {
-      console.log('Desconectado do servidor WebSocket')
+      console.log('🔌 Desconectado do servidor WebSocket')
+      console.log('🔌 Resetando currentRoom de', currentRoom, 'para null')
       setCurrentRoom(null)
       setPlayersInRoom([])
       setIsHost(false)
     }
 
     const roomCreatedHandler = (data) => {
+      console.log('🏗️ roomCreatedHandler - definindo currentRoom para:', data.room_code)
       setCurrentRoom(data.room_code)
       setPlayersInRoom(data.room_data?.players || [])
       // Verificar se o jogador atual é o host
@@ -48,6 +50,7 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
     }
 
     const roomJoinedHandler = (data) => {
+      console.log('🚪 roomJoinedHandler - definindo currentRoom para:', data.room_code)
       setCurrentRoom(data.room_code)
       setPlayersInRoom(data.room_data?.players || [])
       // Verificar se o jogador atual é o host
@@ -57,6 +60,7 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
     }
 
     const playerJoinedHandler = (data) => {
+      console.log('👤 playerJoinedHandler - currentRoom atual:', currentRoom)
       setPlayersInRoom(data.players || [])
       // Verificar se o jogador atual é o host
       const currentPlayer = data.players?.find(p => p.session_id === sessionId)
@@ -67,6 +71,8 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
     }
 
     const playerLeftHandler = (data) => {
+      console.log('🚶 playerLeftHandler - currentRoom atual:', currentRoom)
+      console.log('🚶 playerLeftHandler - mantendo currentRoom como:', currentRoom)
       setPlayersInRoom(data.players || [])
       // Verificar se o jogador atual é o host (pode ter sido promovido)
       const currentPlayer = data.players?.find(p => p.session_id === sessionId)
@@ -78,12 +84,13 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
       console.log('🎮 Jogo iniciado no MultiplayerRoom!', data)
       console.log('🏠 currentRoom:', currentRoom)
       console.log('🎯 selectedGameType:', selectedGameType)
+      console.log('📦 room_code do evento:', data.room_code)
       
       setGameStarted(true)
       if (typeof onStartGame === 'function') {
         const gameData = {
           ...data,
-          roomCode: currentRoom,
+          roomCode: data.room_code || currentRoom, // Usar room_code do evento como fallback
           gameType: selectedGameType
         }
         console.log('📤 Enviando dados para App.jsx:', gameData)
