@@ -4,7 +4,7 @@ import mimetypes
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, redirect
 from flask_cors import CORS
 from flask_socketio import SocketIO
 # Removido: imports de src.* e banco de dados inexistentes
@@ -63,6 +63,9 @@ def favicon():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    # Redirecionar para adicionar barra final quando acessando o subpath sem '/'
+    if BASE_PATH and path == BASE_PATH:
+        return redirect(f'/{BASE_PATH}/', code=308)
     # Considerar subpath
     effective_path = strip_base_path(path)
 
