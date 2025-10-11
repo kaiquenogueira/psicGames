@@ -10,12 +10,14 @@ const MultiplayerGameWrapper = ({
   gameType, 
   roomCode, 
   onGameEnd, 
-  onLeaveRoom 
+  onLeaveRoom, 
+  initialPlayers = [],
+  initialStarted = false
 }) => {
-  const [gameStarted, setGameStarted] = useState(false)
+  const [gameStarted, setGameStarted] = useState(initialStarted)
   const [gameEnded, setGameEnded] = useState(false)
-  const [players, setPlayers] = useState([])
-  const [gameStartTime, setGameStartTime] = useState(null)
+  const [players, setPlayers] = useState(initialPlayers)
+  const [gameStartTime, setGameStartTime] = useState(initialStarted ? Date.now() : null)
   const [finalScore, setFinalScore] = useState(0)
   const [rankings, setRankings] = useState([])
   const [winner, setWinner] = useState(null)

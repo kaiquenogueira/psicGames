@@ -198,6 +198,8 @@ function App() {
           roomCode={multiplayerData?.roomCode}
           onGameEnd={handleMultiplayerEnd}
           onLeaveRoom={() => setCurrentView('multiplayer')}
+          initialPlayers={multiplayerData?.players}
+          initialStarted={true}
         />
       )
     }
