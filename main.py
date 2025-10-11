@@ -25,8 +25,19 @@ app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 # Configurar CORS para permitir requisições do frontend
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-# Inicializar SocketIO
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+# Inicializar SocketIO com tolerância maior e logging configurável
+LOG_ENGINEIO = os.environ.get('LOG_ENGINEIO', '0') == '1'
+PING_TIMEOUT = int(os.environ.get('PING_TIMEOUT', '30'))
+PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '25'))
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins='*',
+    async_mode='eventlet',
+    ping_timeout=PING_TIMEOUT,
+    ping_interval=PING_INTERVAL,
+    engineio_logger=LOG_ENGINEIO
+)
 
 # Registrar blueprints
 app.register_blueprint(multiplayer_bp, url_prefix='/api')
@@ -58,6 +69,11 @@ def serve_asset(filename):
 @app.route('/favicon.svg')
 def favicon():
     return send_from_directory(os.path.dirname(__file__), 'favicon.svg')
+
+# Rota de saúde
+@app.route('/health')
+def health():
+    return 'ok', 200
 
 # Rota para servir SPA e ativos considerando subpath
 @app.route('/', defaults={'path': ''})
