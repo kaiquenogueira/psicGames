@@ -15,6 +15,9 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
   const [isHost, setIsHost] = useState(false)
   const [selectedGameType, setSelectedGameType] = useState('attention')
   const [gameStarted, setGameStarted] = useState(false)
+  // Configurações da partida
+  const [scoreMode, setScoreMode] = useState('final_only')
+  const [matchDuration, setMatchDuration] = useState(60)
 
   const { socket, isConnected, sessionId, createRoom, joinRoom, leaveRoom, startGame, on } = useSocket()
 
@@ -91,7 +94,9 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
         const gameData = {
           ...data,
           roomCode: data.room_code || currentRoom, // Usar room_code do evento como fallback
-          gameType: selectedGameType
+          gameType: selectedGameType,
+          scoreMode,
+          matchDuration
         }
         console.log('📤 Enviando dados para App.jsx:', gameData)
         onStartGame(gameData)
@@ -273,6 +278,40 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
                   ))}
                 </ul>
               </div>
+
+              {isHost && (
+                <div className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow space-y-4">
+                  <h4 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Configurações da Partida</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="scoreMode">Modo de Pontuação</Label>
+                      <select
+                        id="scoreMode"
+                        value={scoreMode}
+                        onChange={(e) => setScoreMode(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600"
+                      >
+                        <option value="realtime">Tempo Real (competitivo)</option>
+                        <option value="final_only">Somente Resultado Final</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="matchDuration">Duração da Partida</Label>
+                      <select
+                        id="matchDuration"
+                        value={matchDuration}
+                        onChange={(e) => setMatchDuration(Number(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600"
+                      >
+                        <option value={30}>30 segundos</option>
+                        <option value={60}>60 segundos</option>
+                        <option value={90}>90 segundos</option>
+                        <option value={120}>120 segundos</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {isHost && playersInRoom.length > 1 && (
                 <Button onClick={handleStartGame} className="w-full" size="lg">

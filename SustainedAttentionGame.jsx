@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge.jsx'
 import { Focus, Home, RotateCcw, Clock, Eye } from 'lucide-react'
 
-const SustainedAttentionGame = () => {
+const SustainedAttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, roomCode, sessionId, scoreMode = 'realtime', matchDuration = null }) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameOver, setGameOver] = useState(false)
   const [timeElapsed, setTimeElapsed] = useState(0)
@@ -18,7 +18,7 @@ const SustainedAttentionGame = () => {
   
   const intervalRef = useRef(null)
   const targetIntervalRef = useRef(null)
-  const gameDuration = 120 // 2 minutos
+  const gameDuration = matchDuration ?? 120 // 2 minutos
 
   const targetEmojis = ['🎯', '⭐', '💎', '🔥', '✨']
   const distractorEmojis = ['🌙', '☁️', '🌸', '🍃', '🦋', '🌺', '🌿', '🌊']
@@ -103,11 +103,19 @@ const SustainedAttentionGame = () => {
     setTargets(prev => prev.filter(t => t.id !== target.id))
 
     if (target.isTarget) {
-      setScore(prev => prev + 10 * level)
+      setScore(prev => {
+        const newScore = prev + 10 * level
+        if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
+        return newScore
+      })
       setHitTargets(prev => prev + 1)
     } else {
       // Clicou em distração
-      setScore(prev => Math.max(0, prev - 5))
+      setScore(prev => {
+        const newScore = Math.max(0, prev - 5)
+        if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
+        return newScore
+      })
     }
   }
 
@@ -130,7 +138,15 @@ const SustainedAttentionGame = () => {
     clearInterval(intervalRef.current)
     clearInterval(targetIntervalRef.current)
     setTargets([])
+    if (isMultiplayer && onGameComplete) onGameComplete(score)
   }
+
+  // Auto-iniciar no modo multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      startGame()
+    }
+  }, [isMultiplayer, gameStarted])
 
   const resetGame = () => {
     setGameStarted(false)

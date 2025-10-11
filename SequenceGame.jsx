@@ -10,7 +10,9 @@ const SequenceGame = ({
   onGameComplete, 
   onGameAction, 
   roomCode, 
-  sessionId 
+  sessionId,
+  scoreMode = 'realtime',
+  matchDuration = null
 }) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [sequence, setSequence] = useState([])
@@ -95,13 +97,26 @@ const SequenceGame = ({
   // Auto-inicializar o jogo no modo multiplayer
   useEffect(() => {
     console.log('🎯 SequenceGame useEffect - isMultiplayer:', isMultiplayer, 'gameStarted:', gameStarted)
-    console.log('🎯 Props recebidas:', { isMultiplayer, roomCode, sessionId, onScoreUpdate: !!onScoreUpdate, onGameComplete: !!onGameComplete })
+    console.log('🎯 Props recebidas:', { isMultiplayer, roomCode, sessionId, onScoreUpdate: !!onScoreUpdate, onGameComplete: !!onGameComplete, scoreMode, matchDuration })
     
     if (isMultiplayer && !gameStarted) {
       console.log('🎯 Inicializando jogo automaticamente no modo multiplayer')
       initializeGame()
     }
   }, [isMultiplayer, gameStarted])
+
+  // Timer opcional de término da partida (modo sincronizado por tempo)
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      setGameOver(true)
+      setMessage('Tempo esgotado!')
+      if (isMultiplayer && typeof onGameComplete === 'function') {
+        onGameComplete(score)
+      }
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration, score, isMultiplayer, onGameComplete])
 
   const handleColorClick = async (colorId) => {
     if (isPlaying || gameOver) return
@@ -137,7 +152,7 @@ const SequenceGame = ({
       setMessage('Parabéns! Próximo nível...')
       
       // Notificar o multiplayer sobre a atualização do score
-      if (isMultiplayer && onScoreUpdate) {
+      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) {
         onScoreUpdate(newScore)
       }
       

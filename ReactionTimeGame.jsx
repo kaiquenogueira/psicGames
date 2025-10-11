@@ -4,7 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge.jsx'
 import { Zap, Home, RotateCcw, Clock } from 'lucide-react'
 
-const ReactionTimeGame = () => {
+const ReactionTimeGame = ({
+  isMultiplayer = false,
+  onScoreUpdate,
+  onGameComplete,
+  roomCode,
+  sessionId,
+  scoreMode = 'realtime',
+  matchDuration = null
+}) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameOver, setGameOver] = useState(false)
   const [waiting, setWaiting] = useState(false)
@@ -113,12 +121,47 @@ const ReactionTimeGame = () => {
     }, 1000)
   }
 
+  // Auto-start em modo multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted && !gameOver) {
+      startGame()
+    }
+  }, [isMultiplayer, gameStarted, gameOver])
+
+  // Timer de partida opcional (matchDuration em segundos)
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      endGame()
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
+
+  useEffect(() => {
+    if (reactionTimes.length > 0) {
+      const avg = reactionTimes.reduce((sum, time) => sum + time, 0) / reactionTimes.length
+      setAverageTime(Math.round(avg))
+      const best = Math.min(...reactionTimes)
+      setBestTime(best)
+      // Atualiza score em tempo real (maior melhor): 1000 - média
+      if (isMultiplayer && scoreMode !== 'final_only' && typeof onScoreUpdate === 'function') {
+        const score = Math.max(0, 1000 - Math.round(avg))
+        onScoreUpdate(score)
+      }
+    }
+  }, [reactionTimes])
+
   const endGame = () => {
     setGameOver(true)
     setGameStarted(false)
     setWaiting(false)
     setShowSignal(false)
     clearTimeout(timeoutRef.current)
+    // Envia resultado final em modo multiplayer
+    if (isMultiplayer && typeof onGameComplete === 'function') {
+      const finalScore = averageTime > 0 ? Math.max(0, 1000 - averageTime) : 0
+      onGameComplete(finalScore)
+    }
   }
 
   const resetGame = () => {

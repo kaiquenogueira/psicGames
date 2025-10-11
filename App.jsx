@@ -200,6 +200,8 @@ function App() {
           onLeaveRoom={() => setCurrentView('multiplayer')}
           initialPlayers={multiplayerData?.players}
           initialStarted={true}
+          scoreMode={multiplayerData?.scoreMode || 'realtime'}
+          matchDuration={multiplayerData?.matchDuration || null}
         />
       )
     }

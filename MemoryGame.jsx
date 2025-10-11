@@ -6,7 +6,15 @@ import { Brain, RotateCcw, Trophy, Users, Timer } from 'lucide-react'
 
 const emojis = ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🥝', '🍍', '🥭', '🍑']
 
-const MemoryGame = () => {
+const MemoryGame = ({
+  isMultiplayer = false,
+  onScoreUpdate,
+  onGameComplete,
+  roomCode,
+  sessionId,
+  scoreMode = 'realtime',
+  matchDuration = null
+}) => {
   const [cards, setCards] = useState([])
   const [flippedCards, setFlippedCards] = useState([])
   const [matchedCards, setMatchedCards] = useState([])
@@ -15,6 +23,13 @@ const MemoryGame = () => {
   const [gameWon, setGameWon] = useState(false)
   const [time, setTime] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
+
+  // Auto-start em modo multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer, gameStarted])
 
   useEffect(() => {
     let interval
@@ -25,6 +40,17 @@ const MemoryGame = () => {
     }
     return () => clearInterval(interval)
   }, [isRunning])
+
+  // Timer opcional da partida
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      // força fim da partida
+      setIsRunning(false)
+      setGameWon(true) // trata como fim
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
@@ -93,12 +119,34 @@ const MemoryGame = () => {
     }
   }, [flippedCards, cards])
 
+  // Atualiza score parcial em modo realtime
+  useEffect(() => {
+    if (isMultiplayer && scoreMode !== 'final_only' && typeof onScoreUpdate === 'function') {
+      const totalPairs = emojis.length
+      const score = Math.round((matchedCards.length / totalPairs) * 1000)
+      onScoreUpdate(score)
+    }
+  }, [matchedCards])
+
   useEffect(() => {
     if (matchedCards.length === emojis.length && gameStarted) {
       setGameWon(true)
       setIsRunning(false)
     }
   }, [matchedCards, gameStarted])
+
+  // Envia resultado final quando gameWon
+  useEffect(() => {
+    if (gameWon && isMultiplayer && typeof onGameComplete === 'function') {
+      const totalPairs = emojis.length
+      // Fórmula: base por pares + bônus por tempo (menor tempo melhor) e por menos movimentos
+      const pairsScore = Math.round((matchedCards.length / totalPairs) * 700)
+      const timePenalty = Math.min(300, time * 3) // penaliza até 300
+      const movePenalty = Math.min(300, Math.max(0, (moves - totalPairs * 2) * 5))
+      const finalScore = Math.max(0, pairsScore + 300 - timePenalty - movePenalty)
+      onGameComplete(finalScore)
+    }
+  }, [gameWon])
 
   const resetGame = () => {
     setGameStarted(false)

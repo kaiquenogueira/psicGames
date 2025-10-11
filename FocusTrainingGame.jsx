@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge.jsx'
 import { Target, Home, RotateCcw } from 'lucide-react'
 
-const FocusTrainingGame = () => {
+const FocusTrainingGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, roomCode, sessionId, scoreMode = 'realtime', matchDuration = null }) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameOver, setGameOver] = useState(false)
   const [score, setScore] = useState(0)
   const [level, setLevel] = useState(1)
-  const [timeLeft, setTimeLeft] = useState(30)
+  const [timeLeft, setTimeLeft] = useState(matchDuration ?? 30)
   const [distractors, setDistractors] = useState([])
   const [targetVisible, setTargetVisible] = useState(true)
   const [focusAccuracy, setFocusAccuracy] = useState(100)
@@ -45,6 +45,13 @@ const FocusTrainingGame = () => {
     }
   }, [gameStarted, gameOver, level])
 
+  // Auto-iniciar no modo multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      startGame()
+    }
+  }, [isMultiplayer, gameStarted])
+
   const generateDistractor = () => {
     if (!gameAreaRef.current) return
 
@@ -68,7 +75,11 @@ const FocusTrainingGame = () => {
   const handleTargetClick = () => {
     if (!gameStarted || gameOver) return
     
-    setScore(prev => prev + 10 * level)
+    setScore(prev => {
+      const newScore = prev + 10 * level
+      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
+      return newScore
+    })
     setFocusAccuracy(prev => Math.min(100, prev + 2))
     
     // Aumenta nível a cada 50 pontos
@@ -82,7 +93,11 @@ const FocusTrainingGame = () => {
     if (!gameStarted || gameOver) return
     
     setFocusAccuracy(prev => Math.max(0, prev - 10))
-    setScore(prev => Math.max(0, prev - 5))
+    setScore(prev => {
+      const newScore = Math.max(0, prev - 5)
+      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
+      return newScore
+    })
   }
 
   const startGame = () => {
@@ -90,7 +105,7 @@ const FocusTrainingGame = () => {
     setGameOver(false)
     setScore(0)
     setLevel(1)
-    setTimeLeft(30)
+    setTimeLeft(matchDuration ?? 30)
     setDistractors([])
     setFocusAccuracy(100)
   }
@@ -101,6 +116,7 @@ const FocusTrainingGame = () => {
     clearInterval(intervalRef.current)
     clearInterval(distractorIntervalRef.current)
     setDistractors([])
+    if (isMultiplayer && onGameComplete) onGameComplete(score)
   }
 
   const resetGame = () => {

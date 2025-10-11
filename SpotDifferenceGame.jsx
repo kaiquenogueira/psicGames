@@ -35,7 +35,15 @@ const images = [
   }
 ]
 
-const SpotDifferenceGame = () => {
+const SpotDifferenceGame = ({
+  isMultiplayer = false,
+  onScoreUpdate,
+  onGameComplete,
+  roomCode,
+  sessionId,
+  scoreMode = 'realtime',
+  matchDuration = null
+}) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameWon, setGameWon] = useState(false)
   const [currentImage, setCurrentImage] = useState(null)
@@ -55,11 +63,37 @@ const SpotDifferenceGame = () => {
     return () => clearInterval(interval)
   }, [isRunning])
 
+  // Auto-start em multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer, gameStarted])
+
+  // Timer opcional de partida
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      setIsRunning(false)
+      setGameWon(true)
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
+
   useEffect(() => {
     if (currentImage) {
       loadImagesToCanvas()
     }
   }, [currentImage])
+
+  // Score parcial em tempo real
+  useEffect(() => {
+    if (isMultiplayer && scoreMode !== 'final_only' && typeof onScoreUpdate === 'function') {
+      const total = currentImage ? currentImage.differences.length : 7
+      const score = Math.round((foundDifferences.length / total) * 1000)
+      onScoreUpdate(score)
+    }
+  }, [foundDifferences])
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
@@ -155,17 +189,27 @@ const SpotDifferenceGame = () => {
       const distance = Math.sqrt((x - diff.x) ** 2 + (y - diff.y) ** 2)
       if (distance < diff.radius && !foundDifferences.some(fd => fd.x === diff.x && fd.y === diff.y)) {
         setFoundDifferences(prev => [...prev, diff])
-        
         // Redraw both canvases
         loadImagesToCanvas()
-
         if (foundDifferences.length + 1 === currentImage.differences.length) {
           setGameWon(true)
           setIsRunning(false)
+          // onGameComplete será disparado pelo efeito de gameWon
         }
       }
     })
   }
+
+  // Final por timer
+  useEffect(() => {
+    if (gameWon && isMultiplayer && typeof onGameComplete === 'function') {
+      const total = currentImage ? currentImage.differences.length : 7
+      const progressScore = Math.round((foundDifferences.length / total) * 700)
+      const timePenalty = Math.min(300, time * 5)
+      const finalScore = Math.max(0, progressScore + 300 - timePenalty)
+      onGameComplete(finalScore)
+    }
+  }, [gameWon])
 
   const resetGame = () => {
     setGameStarted(false)

@@ -12,7 +12,9 @@ const MultiplayerGameWrapper = ({
   onGameEnd, 
   onLeaveRoom, 
   initialPlayers = [],
-  initialStarted = false
+  initialStarted = false,
+  scoreMode = 'realtime', // 'realtime' | 'final_only'
+  matchDuration = null // in seconds; when provided, games can end by timer and report only final score
 }) => {
   const [gameStarted, setGameStarted] = useState(initialStarted)
   const [gameEnded, setGameEnded] = useState(false)
@@ -247,31 +249,33 @@ const MultiplayerGameWrapper = ({
   return (
     <div className="space-y-4">
       {/* Placar multiplayer */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="text-sm">
-              Sala: {roomCode}
-            </Badge>
-            <div className="flex items-center gap-4">
-              {players.map((player) => (
-                <div key={player.session_id} className="flex items-center gap-2">
-                  <span className="text-sm font-medium">
-                    {player.name}
-                    {player.session_id === sessionId && " (Você)"}
-                  </span>
-                  <Badge variant={player.session_id === sessionId ? "default" : "outline"}>
-                    {player.score || 0} pts
-                  </Badge>
-                </div>
-              ))}
+      {scoreMode !== 'final_only' && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-sm">
+                Sala: {roomCode}
+              </Badge>
+              <div className="flex items-center gap-4">
+                {players.map((player) => (
+                  <div key={player.session_id} className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {player.name}
+                      {player.session_id === sessionId && " (Você)"}
+                    </span>
+                    <Badge variant={player.session_id === sessionId ? "default" : "outline"}>
+                      {player.score || 0} pts
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Componente do jogo */}
-      {console.log('🎮 Renderizando GameComponent - props:', { isMultiplayer: true, roomCode, sessionId })}
+      {console.log('🎮 Renderizando GameComponent - props:', { isMultiplayer: true, roomCode, sessionId, scoreMode, matchDuration })}
       <GameComponent
         isMultiplayer={true}
         onScoreUpdate={handleScoreUpdate}
@@ -279,6 +283,8 @@ const MultiplayerGameWrapper = ({
         onGameAction={handleGameAction}
         roomCode={roomCode}
         sessionId={sessionId}
+        scoreMode={scoreMode}
+        matchDuration={matchDuration}
       />
     </div>
   )

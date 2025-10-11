@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, RotateCcw, Users, FolderTree, Clock, Zap } from 'lucide-react'
 
-const OrganizationGame = () => {
+const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, roomCode, sessionId, scoreMode = 'realtime', matchDuration = null }) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameWon, setGameWon] = useState(false)
   const [level, setLevel] = useState(1)
@@ -98,6 +98,23 @@ const OrganizationGame = () => {
     e.dataTransfer.dropEffect = 'move'
   }
 
+  // Auto-start em multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer, gameStarted])
+
+  // Timer opcional de partida (matchDuration em segundos)
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      setIsRunning(false)
+      setGameWon(true)
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
+
   const handleDrop = (e, categoryName) => {
     e.preventDefault()
     
@@ -123,7 +140,9 @@ const OrganizationGame = () => {
       
       // Adicionar pontos
       const points = Math.max(100 - time, 10) * level
-      setScore(score + points)
+      const newScore = score + points
+      setScore(newScore)
+      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
       
       // Verificar se completou o nível
       const totalItems = items.length
@@ -136,6 +155,7 @@ const OrganizationGame = () => {
             initializeGame()
           } else {
             setGameWon(true)
+            if (isMultiplayer && onGameComplete) onGameComplete(newScore)
           }
         }, 1000)
       }
@@ -146,6 +166,13 @@ const OrganizationGame = () => {
     
     setDraggedItem(null)
   }
+
+  // Disparar resultado final ao concluir (ganho ou timer)
+  useEffect(() => {
+    if (gameWon && isMultiplayer && typeof onGameComplete === 'function') {
+      onGameComplete(score)
+    }
+  }, [gameWon])
 
   const resetGame = () => {
     setLevel(1)

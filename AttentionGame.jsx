@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, RotateCcw, Users, Eye, Clock, Zap } from 'lucide-react'
 
-const AttentionGame = () => {
+const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, roomCode, sessionId, scoreMode = 'realtime', matchDuration = null }) => {
   const [gameStarted, setGameStarted] = useState(false)
   const [gameWon, setGameWon] = useState(false)
   const [level, setLevel] = useState(1)
@@ -75,6 +75,23 @@ const AttentionGame = () => {
     setIsRunning(true)
   }
 
+  // Auto-start em multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer, gameStarted])
+
+  // Timer opcional de partida (matchDuration em segundos)
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      setIsRunning(false)
+      setGameWon(true)
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
+
   const handleEmojiClick = (item) => {
     if (!gameStarted || gameWon || item.found) return
     
@@ -90,7 +107,9 @@ const AttentionGame = () => {
       
       // Adicionar pontos
       const points = Math.max(100 - time, 10) * level
-      setScore(score + points)
+      const newScore = score + points
+      setScore(newScore)
+      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
       
       if (newFound === targetCount) {
         // Completou o nível!
@@ -102,6 +121,7 @@ const AttentionGame = () => {
             initializeGame()
           } else {
             setGameWon(true)
+            if (isMultiplayer && onGameComplete) onGameComplete(newScore)
           }
         }, 1000)
       }
@@ -119,6 +139,13 @@ const AttentionGame = () => {
     setGameWon(false)
     setIsRunning(false)
   }
+
+  // Disparar resultado final ao concluir (ganho ou timer)
+  useEffect(() => {
+    if (gameWon && isMultiplayer && typeof onGameComplete === 'function') {
+      onGameComplete(score)
+    }
+  }, [gameWon])
 
   return (
     <div className="max-w-5xl mx-auto">
