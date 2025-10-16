@@ -119,51 +119,96 @@ const SequenceGame = ({
   }, [gameStarted, matchDuration, score, isMultiplayer, onGameComplete])
 
   const handleColorClick = async (colorId) => {
-    if (isPlaying || gameOver) return
+    if (!gameStarted || isPlaying || gameOver) return
     
-    await flashColor(colorId)
+    // Prevenir múltiplas execuções simultâneas
+    if (isPlaying) return
+    setIsPlaying(true)
     
-    const newPlayerSequence = [...playerSequence, colorId]
-    setPlayerSequence(newPlayerSequence)
+    // Debug logs para rastrear o problema
     
-    // Verificar se está correto
-    const currentIndex = newPlayerSequence.length - 1
+    // Verificar se está correto ANTES de adicionar ao playerSequence
+    const currentIndex = playerSequence.length
     
-    if (newPlayerSequence[currentIndex] !== sequence[currentIndex]) {
+    if (colorId !== sequence[currentIndex]) {
       // Errou!
+      console.log('❌ Debug - ERRO: Sequência incorreta')
+      console.log('❌ Debug - Comparando:', colorId, 'vs', sequence[currentIndex])
+      
+      // Tocar som de erro
+      await flashColor(colorId)
+      
       setGameOver(true)
       setMessage('Ops! Sequência incorreta. Tente novamente!')
+      setIsPlaying(false)
       
       // Notificar o multiplayer sobre o fim do jogo
       if (isMultiplayer && onGameComplete) {
         onGameComplete(score)
       }
-      
       return
     }
     
-    // Verificar se completou a sequência
-    if (newPlayerSequence.length === sequence.length) {
-      // Acertou a sequência completa!
-      const points = sequence.length * 100
-      const newScore = score + points
-      setScore(newScore)
-      setLevel(level + 1)
-      setMessage('Parabéns! Próximo nível...')
+    // Se chegou aqui, a cor está correta - tocar som e fazer flash
+    await flashColor(colorId)
+    
+    // Adicionar ao playerSequence após o som/flash
+    const newPlayerSequence = [...playerSequence, colorId]
+    
+    console.log('✅ Debug - Cor correta!')
+    console.log('🎯 Debug - Sequência do jogador DEPOIS:', newPlayerSequence)
+    
+    // Atualizar o estado usando o callback para garantir que temos o valor mais recente
+    setPlayerSequence(prevPlayerSequence => {
+      const updatedSequence = [...prevPlayerSequence, colorId]
+      console.log('🔄 Debug - PlayerSequence atualizado via callback:', updatedSequence)
       
-      // Notificar o multiplayer sobre a atualização do score
-      if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) {
-        onScoreUpdate(newScore)
+      // Verificar se completou a sequência usando o valor atualizado
+      if (updatedSequence.length === sequence.length) {
+        console.log('🎉 Debug - Sequência completa!')
+        // Acertou a sequência completa!
+        const points = sequence.length * 100
+        const newScore = score + points
+        setScore(newScore)
+        
+        // Verificar se chegou ao nível 10 (sequência de 10 cores)
+        if (level >= 10) {
+          setGameOver(true)
+          setMessage(`🎉 Parabéns! Você completou todos os 10 níveis! Pontuação final: ${newScore}`)
+          setIsPlaying(false)
+          
+          // Notificar o multiplayer sobre o fim do jogo
+          if (isMultiplayer && onGameComplete) {
+            onGameComplete(newScore)
+          }
+          return updatedSequence
+        }
+        
+        setLevel(level + 1)
+        setMessage('Parabéns! Próximo nível...')
+        
+        // Notificar o multiplayer sobre a atualização do score
+        if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) {
+          onScoreUpdate(newScore)
+        }
+        
+        // Resetar a sequência do jogador IMEDIATAMENTE
+        setTimeout(() => {
+          console.log('🔄 Debug - Resetando playerSequence para próximo nível')
+          setPlayerSequence([])
+          
+          const nextColor = Math.floor(Math.random() * 4)
+          const newSequence = [...sequence, nextColor]
+          setSequence(newSequence)
+          playSequence(newSequence)
+        }, 1500)
+      } else {
+        // Se não completou a sequência, liberar para o próximo clique
+        setIsPlaying(false)
       }
       
-      setTimeout(() => {
-        const nextColor = Math.floor(Math.random() * 4)
-        const newSequence = [...sequence, nextColor]
-        setSequence(newSequence)
-        setPlayerSequence([])
-        playSequence(newSequence)
-      }, 1500)
-    }
+      return updatedSequence
+    })
   }
 
   const resetGame = () => {
@@ -253,7 +298,7 @@ const SequenceGame = ({
                   className={`
                     aspect-square rounded-2xl
                     ${activeColor === color.id ? `${color.activeColor} scale-110` : color.color}
-                    ${isPlaying || gameOver ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 cursor-pointer active:scale-95'}
+                    ${(isPlaying || gameOver) && activeColor !== color.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 cursor-pointer active:scale-95'}
                     transition-all duration-200 shadow-lg
                     flex items-center justify-center
                     text-white font-bold text-xl

@@ -36,10 +36,23 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
 
     const disconnectHandler = () => {
       console.log('🔌 Desconectado do servidor WebSocket')
-      console.log('🔌 Resetando currentRoom de', currentRoom, 'para null')
-      setCurrentRoom(null)
-      setPlayersInRoom([])
-      setIsHost(false)
+      console.log('🔌 Mantendo currentRoom:', currentRoom, 'para tentar reconectar sem perder estado')
+      // Não limpar currentRoom/players/isHost para evitar perder o contexto durante reconexões curtas
+      // setCurrentRoom(null)
+      // setPlayersInRoom([])
+      // setIsHost(false)
+    }
+
+    const connectHandler = () => {
+      console.log('🔌 Reconectado ao servidor WebSocket')
+      if (currentRoom && playerName) {
+        console.log('🔁 Tentando reentrar na sala após reconexão:', currentRoom)
+        try {
+          joinRoom(currentRoom, playerName)
+        } catch (e) {
+          console.warn('Falha ao reentrar na sala após reconexão:', e)
+        }
+      }
     }
 
     const roomCreatedHandler = (data) => {
@@ -94,23 +107,28 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
         const gameData = {
           ...data,
           roomCode: data.room_code || currentRoom, // Usar room_code do evento como fallback
-          gameType: selectedGameType,
-          scoreMode,
-          matchDuration
+          gameType: data.game_type || selectedGameType,
+          scoreMode: data.score_mode ?? scoreMode,
+          matchDuration: typeof data.match_duration === 'number' ? data.match_duration : matchDuration
         }
         console.log('📤 Enviando dados para App.jsx:', gameData)
         onStartGame(gameData)
       }
     }
 
-    const leftRoomHandler = () => {
-      console.log('Você saiu da sala.')
+    const leftRoomHandler = (data) => {
+      console.log('🚪 leftRoomHandler - saiu da sala:', data?.room_code)
+      // Limpeza só quando o usuário explicitamente sai (evento left_room)
+      setCurrentRoom(null)
+      setPlayersInRoom([])
+      setIsHost(false)
     }
 
     const errorHandler = (error) => {
       const msg = error?.message || 'Ocorreu um erro.'
       console.error('Erro de sala:', msg)
-      alert(msg)
+      // Remover alert para evitar travas durante reconexões
+      // alert(msg)
     }
 
     const cleanups = [
@@ -122,12 +140,13 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
       on('game_started', gameStartedHandler),
       on('left_room', leftRoomHandler),
       on('error', errorHandler),
+      on('connect', connectHandler),
     ]
 
     return () => {
       cleanups.forEach((fn) => fn && fn())
     }
-  }, [socket, on, onStartGame, sessionId])
+  }, [socket, on, onStartGame, sessionId, currentRoom, playerName, joinRoom])
 
   const handleCreateRoom = () => {
     if (!playerName.trim() || !isConnected) return
@@ -155,7 +174,7 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
 
   const handleStartGame = () => {
     if (!currentRoom || !isHost || !isConnected) return
-    startGame(currentRoom)
+    startGame(currentRoom, { score_mode: scoreMode, match_duration: matchDuration })
   }
 
   const copyRoomCode = () => {

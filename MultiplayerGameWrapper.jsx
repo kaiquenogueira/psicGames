@@ -55,20 +55,75 @@ const MultiplayerGameWrapper = ({
     }
 
     const playerCompletedHandler = (data) => {
-      setPlayers(data.players || [])
+      const normalizedPlayers = (data.players || []).map((p) => ({
+        ...p,
+        // Garantir que sempre tenhamos o campo 'score' preenchido com o final_score quando existir
+        score: p.final_score ?? p.score ?? 0,
+      }))
+      setPlayers(normalizedPlayers)
       
       if (data.all_completed) {
+        // Quando todos completaram mas o backend por algum motivo não emitir game_finished,
+        // garantimos a apresentação do resultado calculando o ranking localmente.
+        const finalRankings = normalizedPlayers
+          .slice()
+          .sort((a, b) => {
+            const scoreA = a.score ?? 0
+            const scoreB = b.score ?? 0
+            if (scoreB !== scoreA) return scoreB - scoreA
+            const timeA = a.completion_time ?? Infinity
+            const timeB = b.completion_time ?? Infinity
+            return timeA - timeB
+          })
+        setRankings(finalRankings)
+        setWinner(finalRankings[0] || null)
         setGameEnded(true)
+        
+        if (onGameEnd) {
+          onGameEnd({
+            winner: finalRankings[0] || null,
+            final_rankings: finalRankings,
+          })
+        }
       }
     }
 
     const gameFinishedHandler = (data) => {
-      setWinner(data.winner)
-      setRankings(data.final_rankings || [])
+      // Garantir que sempre tenhamos um ranking final, mesmo se o backend não enviar
+      const fallbackRankings = (players || [])
+        .map((p) => ({
+          ...p,
+          score: p.final_score ?? p.score ?? 0,
+        }))
+        .slice()
+        .sort((a, b) => {
+          const scoreA = a.score ?? 0
+          const scoreB = b.score ?? 0
+          if (scoreB !== scoreA) return scoreB - scoreA
+          const timeA = a.completion_time ?? Infinity
+          const timeB = b.completion_time ?? Infinity
+          return timeA - timeB
+        })
+
+      const providedRankings = Array.isArray(data.final_rankings)
+        ? data.final_rankings.map((p) => ({
+            ...p,
+            score: p.final_score ?? p.score ?? 0,
+          }))
+        : []
+
+      const computedRankings = providedRankings.length > 0 ? providedRankings : fallbackRankings
+      const computedWinner = data.winner || computedRankings[0] || null
+
+      setWinner(computedWinner)
+      setRankings(computedRankings)
       setGameEnded(true)
       
       if (onGameEnd) {
-        onGameEnd(data)
+        onGameEnd({
+          winner: computedWinner,
+          final_rankings: computedRankings
+        })
       }
     }
 

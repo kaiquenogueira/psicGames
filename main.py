@@ -33,7 +33,7 @@ PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '25'))
 socketio = SocketIO(
     app,
     cors_allowed_origins='*',
-    async_mode='eventlet',
+    async_mode='threading',
     ping_timeout=PING_TIMEOUT,
     ping_interval=PING_INTERVAL,
     engineio_logger=LOG_ENGINEIO

@@ -62,7 +62,10 @@ def init_socketio(socketio):
             'game_type': game_type,
             'players': [player],
             'game_state': {},
-            'started': False
+            'started': False,
+            # Configurações podem ser definidas posteriormente pelo host ao iniciar
+            'score_mode': None,
+            'match_duration': None
         }
         
         join_room(room_code)
@@ -167,13 +170,26 @@ def init_socketio(socketio):
             emit('error', {'message': 'Apenas o anfitrião pode iniciar o jogo'})
             return
         
+        # Aplicar configurações enviadas (opcionais)
+        score_mode = data.get('score_mode')
+        match_duration = data.get('match_duration')
+        if score_mode is not None:
+            room_data['score_mode'] = score_mode
+        if match_duration is not None:
+            try:
+                room_data['match_duration'] = int(match_duration)
+            except (ValueError, TypeError):
+                room_data['match_duration'] = match_duration
+        
         room_data['started'] = True
         
         # Notificar todos na sala
         emit('game_started', {
             'game_type': room_data['game_type'],
             'players': room_data['players'],
-            'room_code': room_code
+            'room_code': room_code,
+            'score_mode': room_data.get('score_mode'),
+            'match_duration': room_data.get('match_duration')
         }, room=room_code)
         
         print(f'Jogo iniciado na sala {room_code}')

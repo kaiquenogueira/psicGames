@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
@@ -15,6 +15,123 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
   const [categories, setCategories] = useState([])
   const [draggedItem, setDraggedItem] = useState(null)
   const [correctPlacements, setCorrectPlacements] = useState(0)
+  
+  // Estados para touch/mobile
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const dragElementRef = useRef(null)
+  const containerRef = useRef(null)
+
+  // Configurar event listeners para touch com { passive: false }
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleTouchStartPassive = (e) => {
+      if (!selectedItem) return
+      
+      const touch = e.touches[0]
+      const target = e.target.closest('[data-draggable-item]')
+      if (!target) return
+      
+      const itemId = target.dataset.draggableItem
+      const item = items.find(i => i.id === itemId && !i.placed)
+      if (!item) return
+      
+      const rect = target.getBoundingClientRect()
+      
+      setSelectedItem(item)
+      setTouchStartPos({ x: touch.clientX, y: touch.clientY })
+      setDragOffset({
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      })
+      setIsDragging(false)
+      
+      // Prevenir scroll apenas quando necessário
+      e.preventDefault()
+    }
+
+    const handleTouchMovePassive = (e) => {
+      if (!selectedItem) return
+      
+      const touch = e.touches[0]
+      const deltaX = Math.abs(touch.clientX - touchStartPos.x)
+      const deltaY = Math.abs(touch.clientY - touchStartPos.y)
+      
+      // Iniciar drag se moveu mais de 10px
+      if (!isDragging && (deltaX > 10 || deltaY > 10)) {
+        setIsDragging(true)
+        setDraggedItem(selectedItem)
+        e.preventDefault() // Prevenir scroll durante drag
+      }
+      
+      if (isDragging && dragElementRef.current) {
+        dragElementRef.current.style.position = 'fixed'
+        dragElementRef.current.style.left = `${touch.clientX - dragOffset.x}px`
+        dragElementRef.current.style.top = `${touch.clientY - dragOffset.y}px`
+        dragElementRef.current.style.zIndex = '1000'
+        dragElementRef.current.style.pointerEvents = 'none'
+        dragElementRef.current.style.transform = 'scale(1.1)'
+        dragElementRef.current.style.opacity = '0.8'
+        e.preventDefault()
+      }
+    }
+
+    const handleTouchEndPassive = (e) => {
+      if (!selectedItem) return
+      
+      if (isDragging) {
+        const touch = e.changedTouches[0]
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY)
+        
+        // Encontrar a categoria de destino
+        let targetCategory = null
+        let element = elementBelow
+        
+        while (element && !targetCategory) {
+          if (element.dataset && element.dataset.category) {
+            targetCategory = element.dataset.category
+            break
+          }
+          element = element.parentElement
+        }
+        
+        if (targetCategory) {
+          handleItemDrop(selectedItem, targetCategory)
+        }
+        
+        // Reset do elemento visual
+        if (dragElementRef.current) {
+          dragElementRef.current.style.position = ''
+          dragElementRef.current.style.left = ''
+          dragElementRef.current.style.top = ''
+          dragElementRef.current.style.zIndex = ''
+          dragElementRef.current.style.pointerEvents = ''
+          dragElementRef.current.style.transform = ''
+          dragElementRef.current.style.opacity = ''
+        }
+        
+        setDraggedItem(null)
+      }
+      
+      setSelectedItem(null)
+      setIsDragging(false)
+    }
+
+    // Adicionar listeners com { passive: false } apenas quando necessário
+    container.addEventListener('touchstart', handleTouchStartPassive, { passive: false })
+    container.addEventListener('touchmove', handleTouchMovePassive, { passive: false })
+    container.addEventListener('touchend', handleTouchEndPassive, { passive: false })
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStartPassive)
+      container.removeEventListener('touchmove', handleTouchMovePassive)
+      container.removeEventListener('touchend', handleTouchEndPassive)
+    }
+  }, [selectedItem, touchStartPos, isDragging, dragOffset, items])
 
   const itemsByCategory = {
     'Frutas': ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒'],
@@ -98,39 +215,53 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
     e.dataTransfer.dropEffect = 'move'
   }
 
-  // Auto-start em multiplayer
-  useEffect(() => {
-    if (isMultiplayer && !gameStarted) {
-      initializeGame()
+  // Funções para touch/mobile - simplificadas para usar apenas com clique
+  const handleTouchStart = (e, item) => {
+    // Apenas para compatibilidade - a lógica principal está no useEffect
+    return
+  }
+
+  const handleTouchMove = (e) => {
+    // Apenas para compatibilidade - a lógica principal está no useEffect
+    return
+  }
+
+  const handleTouchEnd = (e) => {
+    // Apenas para compatibilidade - a lógica principal está no useEffect
+    return
+  }
+
+  const handleItemClick = (item) => {
+    if (selectedItem && selectedItem.id === item.id) {
+      // Deselecionar se clicar no mesmo item
+      setSelectedItem(null)
+    } else {
+      // Selecionar item
+      setSelectedItem(item)
     }
-  }, [isMultiplayer, gameStarted])
+  }
 
-  // Timer opcional de partida (matchDuration em segundos)
-  useEffect(() => {
-    if (!gameStarted || !matchDuration) return
-    const timeout = setTimeout(() => {
-      setIsRunning(false)
-      setGameWon(true)
-    }, matchDuration * 1000)
-    return () => clearTimeout(timeout)
-  }, [gameStarted, matchDuration])
+  const handleCategoryClick = (categoryName) => {
+    if (selectedItem && !selectedItem.placed) {
+      handleItemDrop(selectedItem, categoryName)
+      setSelectedItem(null)
+    }
+  }
 
-  const handleDrop = (e, categoryName) => {
-    e.preventDefault()
-    
-    if (!draggedItem || draggedItem.placed) return
+  const handleItemDrop = (item, categoryName) => {
+    if (!item || item.placed) return
     
     // Verificar se está na categoria correta
-    if (draggedItem.category === categoryName) {
+    if (item.category === categoryName) {
       // Correto!
-      const newItems = items.map(item => 
-        item.id === draggedItem.id ? { ...item, placed: true } : item
+      const newItems = items.map(i => 
+        i.id === item.id ? { ...i, placed: true } : i
       )
       setItems(newItems)
       
       const newCategories = categories.map(cat => 
         cat.name === categoryName 
-          ? { ...cat, items: [...cat.items, draggedItem] }
+          ? { ...cat, items: [...cat.items, item] }
           : cat
       )
       setCategories(newCategories)
@@ -163,7 +294,31 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
       // Errado - penalidade de tempo
       setTime(time + 3)
     }
+  }
+
+  // Auto-start em multiplayer
+  useEffect(() => {
+    if (isMultiplayer && !gameStarted) {
+      initializeGame()
+    }
+  }, [isMultiplayer, gameStarted])
+
+  // Timer opcional de partida (matchDuration em segundos)
+  useEffect(() => {
+    if (!gameStarted || !matchDuration) return
+    const timeout = setTimeout(() => {
+      setIsRunning(false)
+      setGameWon(true)
+    }, matchDuration * 1000)
+    return () => clearTimeout(timeout)
+  }, [gameStarted, matchDuration])
+
+  const handleDrop = (e, categoryName) => {
+    e.preventDefault()
     
+    if (!draggedItem || draggedItem.placed) return
+    
+    handleItemDrop(draggedItem, categoryName)
     setDraggedItem(null)
   }
 
@@ -183,6 +338,9 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
     setIsRunning(false)
     setItems([])
     setCategories([])
+    setSelectedItem(null)
+    setIsDragging(false)
+    setDraggedItem(null)
   }
 
   return (
@@ -255,7 +413,13 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
               </p>
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-2xl mx-auto">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Como jogar:</strong> Arraste cada item para a categoria correta. Organize todos os itens o mais rápido possível. Cuidado! Colocar na categoria errada adiciona 3 segundos ao seu tempo.
+                  <strong>Como jogar:</strong> 
+                  <br />
+                  <strong>Desktop:</strong> Arraste cada item para a categoria correta.
+                  <br />
+                  <strong>Mobile:</strong> Toque em um item para selecioná-lo, depois toque na categoria correta. Ou arraste o item diretamente.
+                  <br />
+                  Organize todos os itens o mais rápido possível. Cuidado! Colocar na categoria errada adiciona 3 segundos ao seu tempo.
                 </p>
               </div>
             </div>
@@ -272,9 +436,15 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
                 {items.filter(item => !item.placed).map((item) => (
                   <div
                     key={item.id}
+                    ref={selectedItem && selectedItem.id === item.id ? dragElementRef : null}
                     draggable
                     onDragStart={(e) => handleDragStart(e, item)}
-                    className="w-16 h-16 bg-gradient-to-br from-purple-200 to-pink-200 dark:from-purple-700 dark:to-pink-700 rounded-lg flex items-center justify-center text-4xl cursor-move hover:scale-110 transition-transform shadow-md"
+                    onClick={() => handleItemClick(item)}
+                    className={`w-16 h-16 bg-gradient-to-br from-purple-200 to-pink-200 dark:from-purple-700 dark:to-pink-700 rounded-lg flex items-center justify-center text-4xl cursor-move hover:scale-110 transition-transform shadow-md select-none ${
+                      selectedItem && selectedItem.id === item.id 
+                        ? 'ring-4 ring-blue-400 ring-opacity-75 scale-110' 
+                        : ''
+                    } ${isDragging && selectedItem && selectedItem.id === item.id ? 'opacity-50' : ''}`}
                   >
                     {item.emoji}
                   </div>
@@ -287,12 +457,25 @@ const OrganizationGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete
             {categories.map((category) => (
               <Card
                 key={category.name}
+                data-category={category.name}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, category.name)}
-                className="border-2 border-dashed border-teal-300 hover:border-teal-500 transition-colors"
+                onClick={() => handleCategoryClick(category.name)}
+                className={`border-2 border-dashed transition-all duration-200 cursor-pointer ${
+                  selectedItem && !selectedItem.placed
+                    ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                    : 'border-teal-300 hover:border-teal-500'
+                }`}
               >
                 <CardHeader>
-                  <CardTitle className="text-lg text-center">{category.name}</CardTitle>
+                  <CardTitle className="text-lg text-center flex items-center justify-center gap-2">
+                    {category.name}
+                    {selectedItem && !selectedItem.placed && (
+                      <span className="text-sm text-blue-600 dark:text-blue-400 font-normal">
+                        (toque para organizar)
+                      </span>
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="min-h-[120px] flex flex-wrap gap-2 p-3 bg-teal-50 dark:bg-teal-900/30 rounded-lg">

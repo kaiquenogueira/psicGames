@@ -1,11 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { io } from 'socket.io-client'
 
-// URL do backend - compatível com Vite (VITE_SOCKET_URL) e fallbacks
+// URL do backend - usar variável de ambiente se disponível, senão fallback para localhost:5050
 const SOCKET_URL = (
   typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL
-) || (
-  typeof window !== 'undefined' && window.location ? window.location.origin : null
 ) || 'http://localhost:5050'
 
 let socket = null
@@ -18,7 +16,7 @@ export const useSocket = () => {
     // Criar conexão socket se não existir
     if (!socket) {
       socket = io(SOCKET_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling'],
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
@@ -69,9 +67,13 @@ export const useSocket = () => {
     }
   }, [isConnected])
 
-  const startGame = useCallback((roomCode) => {
+  // startGame agora aceita configurações opcionais e as envia ao backend
+  const startGame = useCallback((roomCode, settings = {}) => {
     if (socket && isConnected) {
-      socket.emit('start_game', { room_code: roomCode })
+      const payload = { room_code: roomCode }
+      if (settings.score_mode) payload.score_mode = settings.score_mode
+      if (typeof settings.match_duration === 'number') payload.match_duration = settings.match_duration
+      socket.emit('start_game', payload)
     }
   }, [isConnected])
 
