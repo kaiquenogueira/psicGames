@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, RotateCcw, Users, Eye, Clock, Zap } from 'lucide-react'
+import { playSuccess, playError } from '../utils/audio.js'
 
 const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, roomCode, sessionId, scoreMode = 'realtime', matchDuration = null }) => {
   const [gameStarted, setGameStarted] = useState(false)
@@ -12,9 +13,11 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
   const [time, setTime] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const [targetEmoji, setTargetEmoji] = useState('')
-  const [grid, setGrid] = useState([])
   const [found, setFound] = useState(0)
   const [targetCount, setTargetCount] = useState(3)
+  const [errorItemId, setErrorItemId] = useState(null)
+  const [streak, setStreak] = useState(0)
+  const [grid, setGrid] = useState([])
 
   const allEmojis = ['🎮', '🎯', '🎨', '🎭', '🎪', '🎸', '🎺', '🎻', '⚽', '🏀', '🎾', '🏐', '🎱', '🎳', '🎲', '🎰', '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒']
 
@@ -38,36 +41,36 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
     // Selecionar emoji alvo
     const target = allEmojis[Math.floor(Math.random() * allEmojis.length)]
     setTargetEmoji(target)
-    
+
     // Determinar quantidade de alvos baseado no nível
     const count = Math.min(3 + level, 8)
     setTargetCount(count)
-    
+
     // Criar grid com emojis
     const gridSize = Math.min(20 + (level * 5), 50)
     const newGrid = []
-    
+
     // Adicionar alvos
     for (let i = 0; i < count; i++) {
       newGrid.push({ id: i, emoji: target, isTarget: true, found: false })
     }
-    
+
     // Adicionar distrações
     while (newGrid.length < gridSize) {
       const randomEmoji = allEmojis[Math.floor(Math.random() * allEmojis.length)]
       if (randomEmoji !== target) {
-        newGrid.push({ 
-          id: newGrid.length, 
-          emoji: randomEmoji, 
-          isTarget: false, 
-          found: false 
+        newGrid.push({
+          id: newGrid.length,
+          emoji: randomEmoji,
+          isTarget: false,
+          found: false
         })
       }
     }
-    
+
     // Embaralhar
     newGrid.sort(() => Math.random() - 0.5)
-    
+
     setGrid(newGrid)
     setFound(0)
     setGameStarted(true)
@@ -94,23 +97,33 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
 
   const handleEmojiClick = (item) => {
     if (!gameStarted || gameWon || item.found) return
-    
+
     if (item.isTarget) {
       // Acertou!
-      const newGrid = grid.map(g => 
+      playSuccess()
+      const newGrid = grid.map(g =>
         g.id === item.id ? { ...g, found: true } : g
       )
       setGrid(newGrid)
-      
+
       const newFound = found + 1
       setFound(newFound)
-      
-      // Adicionar pontos
+
+      // Adicionar pontos e analisar streak
       const points = Math.max(100 - time, 10) * level
       const newScore = score + points
       setScore(newScore)
+
+      const newStreak = streak + 1
+      if (newStreak >= 2) {
+        setTime(prev => Math.max(0, prev - 2)) // Bônus de tempo para reduzir ansiedade
+        setStreak(0)
+      } else {
+        setStreak(newStreak)
+      }
+
       if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) onScoreUpdate(newScore)
-      
+
       if (newFound === targetCount) {
         // Completou o nível!
         setIsRunning(false)
@@ -126,7 +139,19 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
         }, 1000)
       }
     } else {
-      // Errou - penalidade de tempo
+      // Errou - penalidade de tempo, reset de streak e facilitação de nível
+      playError()
+      setErrorItemId(item.id)
+      setStreak(0)
+
+      // Encontrar um distrator para remover (facilitar)
+      const distractors = grid.filter(g => !g.isTarget && !g.found && g.id !== item.id)
+      if (distractors.length > 0) {
+        const toRemove = distractors[Math.floor(Math.random() * distractors.length)]
+        setGrid(prev => prev.filter(g => g.id !== toRemove.id))
+      }
+
+      setTimeout(() => setErrorItemId(null), 300)
       setTime(time + 5)
     }
   }
@@ -191,22 +216,45 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
         </CardContent>
       </Card>
 
-      {gameWon && (
-        <Card className="mb-6 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900 border-2 border-yellow-400 animate-bounce-in">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-600 animate-pulse" />
-              <h2 className="text-3xl font-bold mb-2">Parabéns! 🎉</h2>
-              <p className="text-lg">
-                Você completou todos os níveis com <strong>{score}</strong> pontos!
-              </p>
-              <p className="text-base mt-2 text-gray-600 dark:text-gray-300">
-                Sua atenção visual está excelente!
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {gameWon && (() => {
+        const showFullReport = true; // In the future: userState.isPremium
+        return (
+          <Card className="mb-6 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900 border-2 border-yellow-400 animate-bounce-in">
+            <CardContent className="pt-6">
+              <div className="text-center mb-6">
+                <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-600 animate-pulse" />
+                <h2 className="text-3xl font-bold mb-2">Parabéns! 🎉</h2>
+                <p className="text-lg">
+                  Você completou o treino com <strong>{score}</strong> pontos!
+                </p>
+              </div>
+
+              {/* Premium / Detailed Report Section */}
+              <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-6 border border-orange-200 dark:border-orange-700/50 relative overflow-hidden">
+                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                  Relatório Analítico de Atenção Escaneada
+                  {!showFullReport && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full uppercase tracking-wider">Pro</span>}
+                </h3>
+
+                {showFullReport ? (
+                  <div className="space-y-4 text-gray-700 dark:text-gray-300 text-sm">
+                    <p><strong>Acurácia de Escaneamento:</strong> Excelente. Você encontrou todos os alvos.</p>
+                    <p><strong>Custo de Tempo Adicional (Erros):</strong> {time > (level * 10) ? 'Foi um pouco alto devido aos cliques incorretos.' : 'Mínimo. Você filtrou bem os distratores visuais.'}</p>
+                    <p className="mt-4 text-xs text-gray-500 italic">* Nota: A capacidade de varredura visual é crucial para desenvolvimento de foco sob carga de estímulos.</p>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 backdrop-blur-sm bg-white/60 dark:bg-gray-800/80 flex flex-col items-center justify-center p-6 text-center">
+                    <Trophy className="w-8 h-8 text-yellow-500 mb-2" />
+                    <h4 className="font-bold mb-1 dark:text-gray-100">Análise Premium de Desempenho</h4>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">Veja onde você está comparado à média, além das métricas aprofundadas sobre varredura visual.</p>
+                    <Button className="bg-orange-500 hover:bg-orange-600">Desbloquear Relatório</Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {!gameStarted ? (
         <Card className="border-2 border-dashed border-orange-300">
@@ -249,10 +297,11 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
                     className={`
                       aspect-square rounded-lg text-3xl md:text-4xl
                       transition-all duration-200
-                      ${item.found 
-                        ? 'bg-green-200 dark:bg-green-800 scale-110 opacity-50' 
+                      ${item.found
+                        ? 'bg-green-200 dark:bg-green-800 scale-110 opacity-50'
                         : 'bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 hover:scale-110 hover:shadow-lg cursor-pointer'
                       }
+                      ${errorItemId === item.id ? 'animate-shake bg-red-200 dark:bg-red-800' : ''}
                       flex items-center justify-center
                     `}
                   >
@@ -274,7 +323,7 @@ const AttentionGame = ({ isMultiplayer = false, onScoreUpdate, onGameComplete, r
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 dark:text-gray-300">
-            Este jogo ajuda a desenvolver <strong>atenção seletiva</strong> e <strong>concentração visual</strong>, 
+            Este jogo ajuda a desenvolver <strong>atenção seletiva</strong> e <strong>concentração visual</strong>,
             habilidades importantes para pessoas com TDAH. A progressão de níveis mantém o desafio adequado e estimulante.
           </p>
         </CardContent>

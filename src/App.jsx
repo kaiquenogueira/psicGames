@@ -1,20 +1,24 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
-import { Gamepad2, Home, Users, Eye, Sparkles, FolderTree, Target, Zap, Focus } from 'lucide-react'
-import AttentionGame from './AttentionGame'
-import SequenceGame from './SequenceGame'
-import OrganizationGame from './OrganizationGame'
-import FocusTrainingGame from './FocusTrainingGame'
-import ReactionTimeGame from './ReactionTimeGame'
-import SustainedAttentionGame from './SustainedAttentionGame'
+import { Gamepad2, Home, Users, Eye, Sparkles, FolderTree, Target, Zap, Focus, Brain, Palette } from 'lucide-react'
+import { useAccessibility } from './contexts/AccessibilityContext.jsx'
+import AttentionGame from './games/AttentionGame'
+import SequenceGame from './games/SequenceGame'
+import OrganizationGame from './games/OrganizationGame'
+import FocusTrainingGame from './games/FocusTrainingGame'
+import ReactionTimeGame from './games/ReactionTimeGame'
+import SustainedAttentionGame from './games/SustainedAttentionGame'
 import MultiplayerRoom from './MultiplayerRoom'
 import MultiplayerGameWrapper from './MultiplayerGameWrapper'
+import ContinuousPerformanceGame from './games/ContinuousPerformanceGame'
+import IQTestGame from './games/IQTestGame'
 import './App.css'
 
 function App() {
   const [currentView, setCurrentView] = useState('home')
   const [multiplayerData, setMultiplayerData] = useState(null)
+  const { isHighContrast, toggleHighContrast } = useAccessibility()
 
   const adhdGames = [
     {
@@ -22,7 +26,14 @@ function App() {
       title: 'Jogo de Atenção Visual',
       description: 'Encontre os emojis alvos rapidamente. Desenvolve atenção seletiva!',
       icon: Eye,
-      color: 'from-orange-500 to-yellow-500',
+      category: 'adhd'
+    },
+    {
+      id: 'cpt',
+      title: 'Atenção Seletiva (CPT)',
+      description: 'Teste neuropsicológico limpo para avaliar controle de impulsos. Baixa estimulação.',
+      icon: Eye,
+      color: 'from-blue-600 to-cyan-500',
       category: 'adhd'
     },
     {
@@ -64,6 +75,14 @@ function App() {
       icon: Focus,
       color: 'from-blue-500 to-indigo-500',
       category: 'adhd'
+    },
+    {
+      id: 'iq-test',
+      title: 'Teste de QI Genérico',
+      description: 'Avaliação lógica, identificação de padrões e raciocínio sequencial.',
+      icon: Brain,
+      color: 'from-purple-600 to-fuchsia-600',
+      category: 'assessment'
     }
   ]
 
@@ -80,17 +99,26 @@ function App() {
   }
 
   const renderHome = () => (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900 relative">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={toggleHighContrast}
+        className={`absolute top-4 right-4 z-50 rounded-full transition-colors ${isHighContrast ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-white/50 dark:bg-black/50 hover:bg-white/80'}`}
+        title="Alternar Modo de Alto Contraste (Acessibilidade)"
+      >
+        <Palette className="h-5 w-5" />
+      </Button>
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-12 animate-fade-in">
           <div className="flex items-center justify-center mb-4">
             <Gamepad2 className="w-16 h-16 text-purple-600 dark:text-purple-400 mr-3 animate-pulse" />
             <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Jogos em Família
+              Vocem
             </h1>
           </div>
           <p className="text-xl text-gray-600 dark:text-gray-300">
-            Divirta-se com jogos simples e multiplayer para toda a família!
+            Plataforma focada no desenvolvimento e avaliação de habilidades cognitivas.
           </p>
         </div>
 
@@ -100,15 +128,13 @@ function App() {
             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
               Jogos para Concentração e Foco
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Especialmente desenvolvidos para ajudar pessoas com TDAH
-            </p>
+
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {adhdGames.map((game, index) => {
               const Icon = game.icon
               return (
-                <Card 
+                <Card
                   key={game.id}
                   className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:border-orange-400 animate-slide-up"
                   style={{ animationDelay: `${index * 0.1}s` }}
@@ -143,7 +169,7 @@ function App() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
               onClick={() => setCurrentView('multiplayer')}
               size="lg"
               className="w-full"
@@ -156,7 +182,7 @@ function App() {
 
         <div className="mt-12 text-center text-gray-600 dark:text-gray-400">
           <p className="text-sm">
-            Plataforma de Jogos em Família - Diversão e desenvolvimento para todas as idades! 🎮
+            Vocem - Desenvolvido para focar no que importa! 🧠
           </p>
         </div>
       </div>
@@ -186,6 +212,12 @@ function App() {
           break
         case 'sustained-attention':
           GameComponent = SustainedAttentionGame
+          break
+        case 'cpt':
+          GameComponent = ContinuousPerformanceGame
+          break
+        case 'iq-test':
+          GameComponent = IQTestGame
           break
         default:
           return <div>Jogo não encontrado</div>
@@ -220,9 +252,13 @@ function App() {
         return <ReactionTimeGame />
       case 'sustained-attention':
         return <SustainedAttentionGame />
+      case 'cpt':
+        return <ContinuousPerformanceGame />
+      case 'iq-test':
+        return <IQTestGame />
       case 'multiplayer':
         return (
-          <MultiplayerRoom 
+          <MultiplayerRoom
             onStartGame={handleMultiplayerStart}
             onLeave={() => setCurrentView('home')}
           />
@@ -233,7 +269,18 @@ function App() {
   }
 
   return (
-    <div>
+    <div className="relative">
+      {currentView !== 'home' && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleHighContrast}
+          className={`absolute top-4 right-4 z-50 rounded-full transition-colors ${isHighContrast ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-black/20 text-white hover:bg-black/40 border-none'}`}
+          title="Alternar Modo de Alto Contraste (Acessibilidade)"
+        >
+          <Palette className="h-5 w-5" />
+        </Button>
+      )}
       {currentView === 'home' && renderHome()}
       {currentView !== 'home' && (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 p-4">

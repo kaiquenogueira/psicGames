@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.j
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, Users, Clock, Target } from 'lucide-react'
-import { useSocket } from './useSocket.js'
+import { useSocket } from './hooks/useSocket.js'
 
 const MultiplayerGameWrapper = ({ 
   GameComponent, 

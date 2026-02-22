@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Users, Wifi, Copy, LogOut, Play, Crown } from 'lucide-react'
-import { useSocket } from './useSocket.js'
+import { useSocket } from './hooks/useSocket.js'
 
 const MultiplayerRoom = ({ onStartGame, onLeave }) => {
   const [playerName, setPlayerName] = useState('')

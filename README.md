@@ -1,4 +1,4 @@
-# PsicGames 🧠🎮
+# Vocem 🧠🎮
 
 Uma plataforma de jogos cognitivos desenvolvida para treinamento e avaliação de habilidades mentais como atenção, memória, foco e tempo de reação.
 
@@ -83,7 +83,7 @@ O frontend estará disponível em `http://localhost:5173`
 ## 📁 Estrutura do Projeto
 
 ```
-psicGames/
+vocem/
 ├── .venv/                  # Ambiente virtual Python
 ├── components/             # Componentes UI reutilizáveis
 │   └── ui/

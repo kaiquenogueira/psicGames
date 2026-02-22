@@ -45,6 +45,7 @@ dist/
 build/
 .next/
 out/
+.agent/
 
 # IDE
 .vscode/

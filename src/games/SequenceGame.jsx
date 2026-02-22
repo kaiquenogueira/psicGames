@@ -3,13 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Trophy, RotateCcw, Users, Sparkles, Zap } from 'lucide-react'
+import { playSound, playError } from '../utils/audio.js'
+import { useAccessibility } from '../contexts/AccessibilityContext.jsx'
 
-const SequenceGame = ({ 
-  isMultiplayer = false, 
-  onScoreUpdate, 
-  onGameComplete, 
-  onGameAction, 
-  roomCode, 
+const SequenceGame = ({
+  isMultiplayer = false,
+  onScoreUpdate,
+  onGameComplete,
+  onGameAction,
+  roomCode,
   sessionId,
   scoreMode = 'realtime',
   matchDuration = null
@@ -21,55 +23,44 @@ const SequenceGame = ({
   const [level, setLevel] = useState(1)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
-  const [activeColor, setActiveColor] = useState(null)
   const [message, setMessage] = useState('')
+  const [errorItemId, setErrorItemId] = useState(null)
+  const [speedMultiplier, setSpeedMultiplier] = useState(1)
+  const [activeColor, setActiveColor] = useState(null)
+
+  const { isHighContrast } = useAccessibility()
 
   const colors = [
-    { id: 0, name: 'Vermelho', color: 'bg-red-500', activeColor: 'bg-red-400 ring-4 ring-red-200 shadow-xl shadow-red-300/50', sound: 'C' },
-    { id: 1, name: 'Azul', color: 'bg-blue-500', activeColor: 'bg-blue-400 ring-4 ring-blue-200 shadow-xl shadow-blue-300/50', sound: 'D' },
-    { id: 2, name: 'Verde', color: 'bg-green-500', activeColor: 'bg-green-400 ring-4 ring-green-200 shadow-xl shadow-green-300/50', sound: 'E' },
-    { id: 3, name: 'Amarelo', color: 'bg-yellow-500', activeColor: 'bg-yellow-400 ring-4 ring-yellow-200 shadow-xl shadow-yellow-300/50', sound: 'F' }
+    { id: 0, name: 'Vermelho', pattern: 'pattern-stripes', color: 'bg-red-500', activeColor: 'bg-red-400 ring-4 ring-red-200 shadow-xl shadow-red-300/50', sound: 'C' },
+    { id: 1, name: 'Azul', pattern: 'pattern-dots', color: 'bg-blue-500', activeColor: 'bg-blue-400 ring-4 ring-blue-200 shadow-xl shadow-blue-300/50', sound: 'D' },
+    { id: 2, name: 'Verde', pattern: 'pattern-cross', color: 'bg-green-500', activeColor: 'bg-green-400 ring-4 ring-green-200 shadow-xl shadow-green-300/50', sound: 'E' },
+    { id: 3, name: 'Amarelo', pattern: 'pattern-waves', color: 'bg-yellow-500', activeColor: 'bg-yellow-400 ring-4 ring-yellow-200 shadow-xl shadow-yellow-300/50', sound: 'F' }
   ]
 
-  const playSound = (colorId) => {
-    // Criar um som simples usando Web Audio API
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-    
+  const playLocalSound = (colorId) => {
     const frequencies = [261.63, 293.66, 329.63, 349.23] // C, D, E, F
-    oscillator.frequency.value = frequencies[colorId]
-    oscillator.type = 'sine'
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-    
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + 0.5)
+    playSound(frequencies[colorId], 'sine', 0.5)
   }
 
-  const flashColor = (colorId) => {
+  const flashColor = (colorId, speedMult = speedMultiplier) => {
     return new Promise((resolve) => {
       setActiveColor(colorId)
-      playSound(colorId)
+      playLocalSound(colorId)
       setTimeout(() => {
         setActiveColor(null)
-        setTimeout(resolve, 200)
-      }, 600)
+        setTimeout(resolve, 200 * speedMult)
+      }, 600 * Math.max(0.4, speedMult))
     })
   }
 
-  const playSequence = async (seq) => {
+  const playSequence = async (seq, speedMult = speedMultiplier) => {
     setIsPlaying(true)
     setMessage('Memorize a sequência...')
-    
+
     for (const colorId of seq) {
-      await flashColor(colorId)
+      await flashColor(colorId, speedMult)
     }
-    
+
     setIsPlaying(false)
     setMessage('Sua vez! Repita a sequência.')
   }
@@ -78,17 +69,18 @@ const SequenceGame = ({
     console.log('🎯 Inicializando jogo - modo multiplayer:', isMultiplayer)
     const firstColor = Math.floor(Math.random() * 4)
     const newSequence = [firstColor]
-    
+
     setSequence(newSequence)
     setPlayerSequence([])
     setLevel(1)
     setScore(0)
+    setSpeedMultiplier(1)
     setGameStarted(true)
     setGameOver(false)
     setMessage('')
-    
+
     console.log('🎯 Jogo inicializado - gameStarted definido como true')
-    
+
     setTimeout(() => {
       playSequence(newSequence)
     }, 500)
@@ -98,7 +90,7 @@ const SequenceGame = ({
   useEffect(() => {
     console.log('🎯 SequenceGame useEffect - isMultiplayer:', isMultiplayer, 'gameStarted:', gameStarted)
     console.log('🎯 Props recebidas:', { isMultiplayer, roomCode, sessionId, onScoreUpdate: !!onScoreUpdate, onGameComplete: !!onGameComplete, scoreMode, matchDuration })
-    
+
     if (isMultiplayer && !gameStarted) {
       console.log('🎯 Inicializando jogo automaticamente no modo multiplayer')
       initializeGame()
@@ -120,49 +112,51 @@ const SequenceGame = ({
 
   const handleColorClick = async (colorId) => {
     if (!gameStarted || isPlaying || gameOver) return
-    
+
     // Prevenir múltiplas execuções simultâneas
     if (isPlaying) return
     setIsPlaying(true)
-    
+
     // Debug logs para rastrear o problema
-    
+
     // Verificar se está correto ANTES de adicionar ao playerSequence
     const currentIndex = playerSequence.length
-    
+
     if (colorId !== sequence[currentIndex]) {
       // Errou!
       console.log('❌ Debug - ERRO: Sequência incorreta')
       console.log('❌ Debug - Comparando:', colorId, 'vs', sequence[currentIndex])
-      
+
       // Tocar som de erro
-      await flashColor(colorId)
-      
+      playError()
+      setErrorItemId(colorId)
+      setTimeout(() => setErrorItemId(null), 300)
       setGameOver(true)
+      setSpeedMultiplier(1) // Punição: Volta ao mais lento
       setMessage('Ops! Sequência incorreta. Tente novamente!')
       setIsPlaying(false)
-      
+
       // Notificar o multiplayer sobre o fim do jogo
       if (isMultiplayer && onGameComplete) {
         onGameComplete(score)
       }
       return
     }
-    
-    // Se chegou aqui, a cor está correta - tocar som e fazer flash
-    await flashColor(colorId)
-    
+
+    // Se chegou aqui, a cor está correta - tocar som e expirar com a velocidade atualizada
+    await flashColor(colorId, speedMultiplier)
+
     // Adicionar ao playerSequence após o som/flash
     const newPlayerSequence = [...playerSequence, colorId]
-    
+
     console.log('✅ Debug - Cor correta!')
     console.log('🎯 Debug - Sequência do jogador DEPOIS:', newPlayerSequence)
-    
+
     // Atualizar o estado usando o callback para garantir que temos o valor mais recente
     setPlayerSequence(prevPlayerSequence => {
       const updatedSequence = [...prevPlayerSequence, colorId]
       console.log('🔄 Debug - PlayerSequence atualizado via callback:', updatedSequence)
-      
+
       // Verificar se completou a sequência usando o valor atualizado
       if (updatedSequence.length === sequence.length) {
         console.log('🎉 Debug - Sequência completa!')
@@ -170,33 +164,38 @@ const SequenceGame = ({
         const points = sequence.length * 100
         const newScore = score + points
         setScore(newScore)
-        
+
         // Verificar se chegou ao nível 10 (sequência de 10 cores)
         if (level >= 10) {
           setGameOver(true)
           setMessage(`🎉 Parabéns! Você completou todos os 10 níveis! Pontuação final: ${newScore}`)
           setIsPlaying(false)
-          
+
           // Notificar o multiplayer sobre o fim do jogo
           if (isMultiplayer && onGameComplete) {
             onGameComplete(newScore)
           }
           return updatedSequence
         }
-        
+
         setLevel(level + 1)
+
+        // Aumenta a velocidade (DDA) para a próxima rodada
+        const newSpeed = Math.max(0.4, speedMultiplier - 0.1)
+        setSpeedMultiplier(newSpeed)
+
         setMessage('Parabéns! Próximo nível...')
-        
+
         // Notificar o multiplayer sobre a atualização do score
         if (isMultiplayer && scoreMode !== 'final_only' && onScoreUpdate) {
           onScoreUpdate(newScore)
         }
-        
+
         // Resetar a sequência do jogador IMEDIATAMENTE
         setTimeout(() => {
           console.log('🔄 Debug - Resetando playerSequence para próximo nível')
           setPlayerSequence([])
-          
+
           const nextColor = Math.floor(Math.random() * 4)
           const newSequence = [...sequence, nextColor]
           setSequence(newSequence)
@@ -206,7 +205,7 @@ const SequenceGame = ({
         // Se não completou a sequência, liberar para o próximo clique
         setIsPlaying(false)
       }
-      
+
       return updatedSequence
     })
   }
@@ -297,8 +296,10 @@ const SequenceGame = ({
                   disabled={isPlaying || gameOver}
                   className={`
                     aspect-square rounded-2xl
+                    ${isHighContrast ? color.pattern : ''}
                     ${activeColor === color.id ? `${color.activeColor} scale-110` : color.color}
-                    ${(isPlaying || gameOver) && activeColor !== color.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 cursor-pointer active:scale-95'}
+                    ${errorItemId === color.id ? 'animate-shake bg-red-600' : ''}
+                    ${(isPlaying || gameOver) && activeColor !== color.id && errorItemId !== color.id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 cursor-pointer active:scale-95'}
                     transition-all duration-200 shadow-lg
                     flex items-center justify-center
                     text-white font-bold text-xl
@@ -309,7 +310,7 @@ const SequenceGame = ({
                 </button>
               ))}
             </div>
-            
+
             {gameOver && (
               <div className="text-center mt-6">
                 <Button onClick={initializeGame} size="lg">
@@ -330,8 +331,8 @@ const SequenceGame = ({
         </CardHeader>
         <CardContent>
           <p className="text-gray-600 dark:text-gray-300">
-            Este jogo trabalha a <strong>memória de trabalho</strong> e a <strong>atenção sustentada</strong>, 
-            habilidades fundamentais para pessoas com TDAH. A combinação de estímulos visuais e auditivos 
+            Este jogo trabalha a <strong>memória de trabalho</strong> e a <strong>atenção sustentada</strong>,
+            habilidades fundamentais para pessoas com TDAH. A combinação de estímulos visuais e auditivos
             ajuda a manter o foco e treinar a capacidade de reter informações temporárias.
           </p>
         </CardContent>
