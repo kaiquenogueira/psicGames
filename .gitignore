@@ -45,6 +45,7 @@ build/
 .next/
 out/
 .agent/
+src/lib/supabase.js
 
 # IDE
 .vscode/
