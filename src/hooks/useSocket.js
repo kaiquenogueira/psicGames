@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 
 export const useSocket = () => {
@@ -56,7 +56,11 @@ export const useSocket = () => {
   const setupChannel = async (roomCode, playerName, gameType, isHost) => {
     // If already in a room, leave it
     if (channelRef.current) {
-      await supabase.removeChannel(channelRef.current)
+      try {
+        await supabase.removeChannel(channelRef.current)
+      } catch (e) {
+        console.error('Error removing channel:', e)
+      }
     }
 
     const channel = supabase.channel(`room:${roomCode}`, {
@@ -149,8 +153,6 @@ export const useSocket = () => {
         roomDataRef.current.game_type = hostPlayer.game_type
       }
 
-      playersRef.current = currentPlayers
-
       // Automatically assign a new host if the host left
       if (currentPlayers.length > 0 && !currentPlayers.some(p => p.is_host)) {
         // The one with the lowest session_id alphabetically becomes host
@@ -162,27 +164,53 @@ export const useSocket = () => {
         }
       }
 
-      emitLocal('player_joined', { players: currentPlayers, player: me })
-      emitLocal('player_left', { players: currentPlayers })
+      // Diff the players to emit proper joined/left events (optional but cleaner)
+      const prevIds = new Set(playersRef.current.map(p => p.session_id))
+      const currIds = new Set(currentPlayers.map(p => p.session_id))
+
+      const joined = currentPlayers.filter(p => !prevIds.has(p.session_id))
+      const left = playersRef.current.filter(p => !currIds.has(p.session_id))
+
+      playersRef.current = currentPlayers
+
+      // We emit the whole list so the component can just update state easily
+      if (joined.length > 0) {
+        emitLocal('player_joined', { players: currentPlayers, player: joined[0] })
+      }
+      if (left.length > 0) {
+        emitLocal('player_left', { players: currentPlayers, player: left[0] })
+      }
+      // Or general update
+      emitLocal('players_updated', { players: currentPlayers })
     })
 
-    // Subscribe to the channel
-    const status = await channel.subscribe(async (status) => {
+    // Subscribe to the channel properly
+    channel.subscribe(async (status, err) => {
+      console.log(`[Supabase Channel] status for ${roomCode}:`, status, err || '')
+      if (err) {
+        emitLocal('error', { message: 'Failed to join/create room. ' + (err.message || 'Unknown network error') })
+        return
+      }
+
       if (status === 'SUBSCRIBED') {
-        await channel.track(me)
+        try {
+          await channel.track(me)
+        } catch (e) {
+          console.error('[Supabase Channel] track error:', e)
+        }
 
         const initialRoomData = {
           code: roomCode,
-          host: isHost ? sessionId : null,
+          host: isHostRef.current ? sessionId : null,
           game_type: roomDataRef.current?.game_type || gameType, // from fallback
-          players: [me],
+          players: [me], // will be overwritten by sync
           game_state: {},
           started: false
         }
 
         roomDataRef.current = initialRoomData
 
-        if (isHost) {
+        if (isHostRef.current) {
           emitLocal('room_created', {
             room_code: roomCode,
             player: me,
@@ -210,11 +238,13 @@ export const useSocket = () => {
   }, [])
 
   const createRoom = useCallback((playerName, gameType = 'memory') => {
+    if (!sessionId) return
     const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase()
     setupChannel(roomCode, playerName, gameType, true)
   }, [sessionId])
 
   const joinRoom = useCallback((roomCode, playerName) => {
+    if (!sessionId) return
     setupChannel(roomCode.toUpperCase(), playerName, 'memory', false)
   }, [sessionId])
 
@@ -308,8 +338,10 @@ export const useSocket = () => {
     broadcastPayload('reset_game', {})
   }, [emitLocal, broadcastPayload])
 
+  const socketObj = useMemo(() => ({ id: sessionId }), [sessionId])
+
   return {
-    socket: { id: sessionId }, // Preserva o contrato if (!socket) return no componente filho
+    socket: socketObj, // Preserva o contrato if (!socket) return no componente filho
     isConnected,
     sessionId,
     createRoom,

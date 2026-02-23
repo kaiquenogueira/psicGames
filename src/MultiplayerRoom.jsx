@@ -80,7 +80,9 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
       setPlayersInRoom(data.players || [])
       // Verificar se o jogador atual é o host
       const currentPlayer = data.players?.find(p => p.session_id === sessionId)
-      setIsHost(currentPlayer?.is_host || false)
+      if (currentPlayer?.is_host !== undefined) {
+        setIsHost(currentPlayer.is_host)
+      }
       if (data.player?.name) {
         console.log(`${data.player.name} entrou na sala.`)
       }
@@ -88,12 +90,17 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
 
     const playerLeftHandler = (data) => {
       console.log('🚶 playerLeftHandler - currentRoom atual:', currentRoom)
-      console.log('🚶 playerLeftHandler - mantendo currentRoom como:', currentRoom)
       setPlayersInRoom(data.players || [])
       // Verificar se o jogador atual é o host (pode ter sido promovido)
       const currentPlayer = data.players?.find(p => p.session_id === sessionId)
-      setIsHost(currentPlayer?.is_host || false)
-      console.log('Um jogador saiu da sala.')
+      if (currentPlayer?.is_host !== undefined) {
+        setIsHost(currentPlayer.is_host)
+      }
+      if (data.player?.name) {
+        console.log(`${data.player.name} saiu da sala.`)
+      } else {
+        console.log('Um jogador saiu da sala.')
+      }
     }
 
     const gameStartedHandler = (data) => {
@@ -101,7 +108,7 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
       console.log('🏠 currentRoom:', currentRoom)
       console.log('🎯 selectedGameType:', selectedGameType)
       console.log('📦 room_code do evento:', data.room_code)
-      
+
       setGameStarted(true)
       if (typeof onStartGame === 'function') {
         const gameData = {
@@ -131,12 +138,19 @@ const MultiplayerRoom = ({ onStartGame, onLeave }) => {
       // alert(msg)
     }
 
+    const playersUpdatedHandler = (data) => {
+      setPlayersInRoom(data.players || [])
+      const currentPlayer = data.players?.find(p => p.session_id === sessionId)
+      setIsHost(currentPlayer?.is_host || false)
+    }
+
     const cleanups = [
       on('disconnect', disconnectHandler),
       on('room_created', roomCreatedHandler),
       on('room_joined', roomJoinedHandler),
       on('player_joined', playerJoinedHandler),
       on('player_left', playerLeftHandler),
+      on('players_updated', playersUpdatedHandler),
       on('game_started', gameStartedHandler),
       on('left_room', leftRoomHandler),
       on('error', errorHandler),

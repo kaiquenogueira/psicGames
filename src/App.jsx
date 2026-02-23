@@ -25,63 +25,56 @@ function App() {
       id: 'attention',
       title: 'Jogo de Atenção Visual',
       description: 'Encontre os emojis alvos rapidamente. Desenvolve atenção seletiva!',
-      icon: Eye,
+      iconUrl: '/icons/attention.png',
       category: 'adhd'
     },
     {
       id: 'cpt',
       title: 'Atenção Seletiva (CPT)',
       description: 'Teste neuropsicológico limpo para avaliar controle de impulsos. Baixa estimulação.',
-      icon: Eye,
-      color: 'from-blue-600 to-cyan-500',
+      iconUrl: '/icons/cpt.png',
       category: 'adhd'
     },
     {
       id: 'sequence',
       title: 'Jogo de Sequência',
       description: 'Memorize e repita sequências. Treina memória de trabalho!',
-      icon: Sparkles,
-      color: 'from-indigo-500 to-purple-500',
+      iconUrl: '/icons/sequence.png',
       category: 'adhd'
     },
     {
       id: 'organization',
       title: 'Jogo de Organização',
       description: 'Organize itens por categoria. Desenvolve habilidades organizacionais!',
-      icon: FolderTree,
-      color: 'from-teal-500 to-cyan-500',
+      iconUrl: '/icons/organization.png',
       category: 'adhd'
     },
     {
       id: 'focus-training',
       title: 'Treino de Foco',
       description: 'Mantenha o foco no centro enquanto ignora distrações. Melhora concentração!',
-      icon: Target,
-      color: 'from-red-500 to-orange-500',
+      iconUrl: '/icons/focus-training.png',
       category: 'adhd'
     },
     {
       id: 'reaction-time',
       title: 'Tempo de Reação',
       description: 'Clique rapidamente quando ver o sinal. Treina velocidade de processamento!',
-      icon: Zap,
-      color: 'from-yellow-500 to-green-500',
+      iconUrl: '/icons/reaction-time.png',
       category: 'adhd'
     },
     {
       id: 'sustained-attention',
       title: 'Atenção Sustentada',
       description: 'Mantenha a atenção por períodos prolongados. Desenvolve resistência mental!',
-      icon: Focus,
-      color: 'from-blue-500 to-indigo-500',
+      iconUrl: '/icons/sustained-attention.png',
       category: 'adhd'
     },
     {
       id: 'iq-test',
       title: 'Teste de QI Genérico',
       description: 'Avaliação lógica, identificação de padrões e raciocínio sequencial.',
-      icon: Brain,
-      color: 'from-purple-600 to-fuchsia-600',
+      iconUrl: '/icons/iq-test.png',
       category: 'assessment'
     }
   ]
@@ -132,20 +125,20 @@ function App() {
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {adhdGames.map((game, index) => {
-              const Icon = game.icon
               return (
                 <Card
                   key={game.id}
-                  className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:border-orange-400 animate-slide-up"
+                  className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border-2 hover:border-orange-500/50 dark:hover:border-orange-500/50 animate-slide-up overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
                   style={{ animationDelay: `${index * 0.1}s` }}
                   onClick={() => setCurrentView(game.id)}
                 >
                   <CardHeader>
-                    <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${game.color} flex items-center justify-center mb-4 shadow-lg`}>
-                      <Icon className="w-8 h-8 text-white" />
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden mb-5 shadow-2xl border border-black/5 dark:border-white/10 relative">
+                      <img src={game.iconUrl} alt={`Ícone do ${game.title}`} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors duration-500 pointer-events-none" />
                     </div>
-                    <CardTitle className="text-xl">{game.title}</CardTitle>
-                    <CardDescription className="text-sm">{game.description}</CardDescription>
+                    <CardTitle className="text-xl font-bold tracking-tight">{game.title}</CardTitle>
+                    <CardDescription className="text-sm leading-relaxed">{game.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Button className="w-full" size="lg" variant="secondary">
